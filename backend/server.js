@@ -38,7 +38,7 @@ const corsOptions = {
 };
 
 server.use(cors(corsOptions));
-server.options('*', cors(corsOptions)); // ✅ handle preflight
+server.options('/*', cors(corsOptions));
 
 server.use(morgan('dev'));
 server.use(express.json());
