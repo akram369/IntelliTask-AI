@@ -5,7 +5,7 @@ const morgan = require('morgan');
 require('dotenv').config();
 const { connectDB, sequelize } = require('./config/db');
 
-// Models & Relationships
+
 require('./models');
 
 const server = express();
@@ -36,12 +36,12 @@ const PORT = process.env.PORT || 5000;
 // Sync Database & Start Server
 const startServer = async () => {
   await connectDB();
-  
+
   // Sync models
   try {
     await sequelize.sync({ alter: true }); // Automatically updates the schema to match models
     console.log('✅ Database models synchronized');
-    
+
     server.listen(PORT, () => {
       console.log(`🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
     });
