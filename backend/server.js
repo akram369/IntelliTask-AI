@@ -17,19 +17,25 @@ server.use(helmet());
 
 const allowedOrigins = [
   'http://localhost:5173',
-  process.env.FRONTEND_URL || 'https://intellitask-ai1.vercel.app'
+  'https://intellitask-ai1.vercel.app'
 ];
 
 server.use(cors({
   origin: function (origin, callback) {
-    // allow requests with no origin (mobile apps, curl, postman)
+    // allow tools like Postman (no origin)
     if (!origin) return callback(null, true);
 
+    // allow exact matches
     if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('❌ Not allowed by CORS'));
+      return callback(null, true);
     }
+
+    // 🔥 allow ALL Vercel preview deployments
+    if (origin.endsWith('.vercel.app')) {
+      return callback(null, true);
+    }
+
+    return callback(new Error('❌ Not allowed by CORS'));
   },
   credentials: true
 }));
@@ -94,10 +100,10 @@ server.listen(PORT, () => {
 (async () => {
   try {
     await connectDB();
-    await sequelize.sync(); // safe for production
+    await sequelize.sync();
     console.log('✅ Database connected & models synchronized');
   } catch (err) {
     console.error('❌ Database connection failed:', err);
-    process.exit(1); // fail fast
+    process.exit(1);
   }
 })();
