@@ -1,0 +1,99 @@
+@import "tailwindcss";
+@config "../tailwind.config.js";
+
+@layer base {
+  :root {
+    --primary-glow: rgba(124, 58, 237, 0.15);
+    --secondary-glow: rgba(99, 102, 241, 0.15);
+  }
+
+  body {
+    @apply bg-[#F8FAFC] text-slate-900 antialiased selection:bg-primary-500/20;
+    font-family: 'Inter', sans-serif;
+    background-image: 
+      radial-gradient(circle at 0% 0%, var(--primary-glow) 0%, transparent 40%),
+      radial-gradient(circle at 100% 100%, var(--secondary-glow) 0%, transparent 40%);
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-slate-900 font-bold tracking-tight;
+    font-family: 'Outfit', sans-serif;
+  }
+}
+
+@layer components {
+  /* Premium Glassmorphism Surfaces */
+  .surface-glass {
+    @apply bg-white/70 backdrop-blur-xl border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)];
+  }
+
+  .surface-card {
+    @apply bg-white border border-slate-200/60 shadow-[0_1px_3px_rgba(0,0,0,0.02),0_4px_12px_rgba(0,0,0,0.03)] transition-all duration-500;
+  }
+  
+  .surface-card:hover {
+    @apply border-primary-200/80 -translate-y-1 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.05),0_8px_10px_-6px_rgba(0,0,0,0.05)];
+  }
+
+  /* Sophisticated Inputs */
+  .human-input {
+    @apply bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 focus:bg-white focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 outline-none transition-all placeholder:text-slate-400 text-slate-900 font-medium;
+  }
+
+  /* Vibrant Hero Section */
+  .hero-card {
+    @apply relative overflow-hidden rounded-[2.5rem] bg-white border border-slate-200/60 shadow-2xl shadow-primary-500/5;
+    background-image: radial-gradient(circle at top right, rgba(124, 58, 237, 0.03), transparent 40%);
+  }
+
+  /* Punchy Primary Buttons */
+  .btn-human-primary {
+    @apply text-white font-bold px-8 py-4 rounded-2xl transition-all active:scale-[0.98] flex items-center justify-center gap-2 relative overflow-hidden;
+    background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
+    box-shadow: 0 10px 20px -5px rgba(124, 58, 237, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
+  
+  .btn-human-primary:hover {
+    @apply -translate-y-0.5;
+    background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+    box-shadow: 0 15px 30px -5px rgba(124, 58, 237, 0.4);
+  }
+
+  .btn-human-secondary {
+    @apply bg-white hover:bg-slate-50 text-slate-700 font-bold px-6 py-3.5 rounded-2xl transition-all border border-slate-200 shadow-sm active:scale-95;
+  }
+
+  .click-feedback {
+    @apply active:scale-95 transition-transform duration-200;
+  }
+
+  /* Task States */
+  .state-indicator {
+    @apply w-1.5 h-full absolute left-0 top-0 rounded-l-full;
+  }
+  .state-pending { @apply bg-amber-400; }
+  .state-completed { @apply bg-emerald-500; }
+  .state-overdue { @apply bg-rose-500; }
+}
+
+/* Custom Utilities */
+.text-gradient {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-primary-600 to-indigo-600;
+}
+
+.glow-subtle {
+  box-shadow: 0 0 40px -10px rgba(139, 92, 246, 0.15);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-200 rounded-full hover:bg-slate-300 transition-colors;
+}
