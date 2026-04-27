@@ -7,24 +7,40 @@ require('dotenv').config();
 const { connectDB, sequelize } = require('./config/db');
 require('./models');
 
-// ✅ Create app
 const server = express();
 
-// ✅ Middlewares
+/* =========================
+   🔐 SECURITY & MIDDLEWARE
+========================= */
+
 server.use(helmet());
 
+const allowedOrigins = [
+  'http://localhost:5173',
+  process.env.FRONTEND_URL || 'https://intellitask-ai1.vercel.app'
+];
+
 server.use(cors({
-  origin: [
-    'http://localhost:5173',
-    'https://your-frontend.vercel.app'
-  ],
+  origin: function (origin, callback) {
+    // allow requests with no origin (mobile apps, curl, postman)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('❌ Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 
 server.use(morgan('dev'));
 server.use(express.json());
 
-// ✅ Health Routes
+/* =========================
+   ❤️ HEALTH CHECK ROUTES
+========================= */
+
 server.get('/', (req, res) => {
   res.send('🚀 IntelliTask AI Backend is running');
 });
@@ -33,38 +49,52 @@ server.get('/health', (req, res) => {
   res.status(200).json({
     status: 'ok',
     uptime: process.uptime(),
-    timestamp: Date.now()
+    timestamp: Date.now(),
+    environment: process.env.NODE_ENV
   });
 });
 
-// ✅ API Routes
+/* =========================
+   🔗 API ROUTES
+========================= */
+
 server.use('/api/auth', require('./routes/authRoutes'));
 server.use('/api/tasks', require('./routes/taskRoutes'));
 server.use('/api/goals', require('./routes/goalRoutes'));
 server.use('/api/analytics', require('./routes/analyticsRoutes'));
 
-// ✅ Error Handler
+/* =========================
+   ⚠️ ERROR HANDLER
+========================= */
+
 server.use((err, req, res, next) => {
+  console.error('❌ Error:', err.message);
+
   res.status(res.statusCode === 200 ? 500 : res.statusCode).json({
     message: err.message,
     stack: process.env.NODE_ENV === 'production' ? null : err.stack,
   });
 });
 
-// ✅ PORT
+/* =========================
+   🚀 SERVER START
+========================= */
+
 const PORT = process.env.PORT || 5000;
 
-// ✅ Start Server FIRST
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
 });
 
-// ✅ Initialize DB AFTER server starts
+/* =========================
+   🗄️ DATABASE INIT
+========================= */
+
 (async () => {
   try {
     await connectDB();
-    await sequelize.sync(); // ⚠️ no alter in production
+    await sequelize.sync(); // safe for production
     console.log('✅ Database connected & models synchronized');
   } catch (err) {
     console.error('❌ Database connection failed:', err);
