@@ -15,30 +15,30 @@ const server = express();
 
 server.use(helmet());
 
-const allowedOrigins = [
-  'http://localhost:5173',
-  'https://intellitask-ai1.vercel.app'
-];
-
-server.use(cors({
-  origin: function (origin, callback) {
-    // allow tools like Postman (no origin)
+// ✅ FINAL CORS CONFIG (stable + production-safe)
+const corsOptions = {
+  origin: (origin, callback) => {
+    // allow Postman / curl / no-origin requests
     if (!origin) return callback(null, true);
 
-    // allow exact matches
-    if (allowedOrigins.includes(origin)) {
+    // allow local dev
+    if (origin === 'http://localhost:5173') {
       return callback(null, true);
     }
 
-    // 🔥 allow ALL Vercel preview deployments
+    // 🔥 allow ALL Vercel deployments (preview + prod)
     if (origin.endsWith('.vercel.app')) {
       return callback(null, true);
     }
 
-    return callback(new Error('❌ Not allowed by CORS'));
+    // ❗ reject silently (do NOT throw error)
+    return callback(null, false);
   },
-  credentials: true
-}));
+  credentials: true,
+};
+
+server.use(cors(corsOptions));
+server.options('*', cors(corsOptions)); // ✅ handle preflight
 
 server.use(morgan('dev'));
 server.use(express.json());
@@ -56,7 +56,7 @@ server.get('/health', (req, res) => {
     status: 'ok',
     uptime: process.uptime(),
     timestamp: Date.now(),
-    environment: process.env.NODE_ENV
+    environment: process.env.NODE_ENV,
   });
 });
 
