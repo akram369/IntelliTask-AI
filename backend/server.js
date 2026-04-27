@@ -15,10 +15,10 @@ const server = express();
 
 server.use(helmet());
 
-// ✅ FINAL CORS CONFIG (stable + production-safe)
+// ✅ FINAL CORS CONFIG (no crash, supports Vercel)
 const corsOptions = {
   origin: (origin, callback) => {
-    // allow Postman / curl / no-origin requests
+    // allow Postman / curl
     if (!origin) return callback(null, true);
 
     // allow local dev
@@ -26,19 +26,18 @@ const corsOptions = {
       return callback(null, true);
     }
 
-    // 🔥 allow ALL Vercel deployments (preview + prod)
+    // 🔥 allow ALL Vercel deployments
     if (origin.endsWith('.vercel.app')) {
       return callback(null, true);
     }
 
-    // ❗ reject silently (do NOT throw error)
+    // ❗ silently block others
     return callback(null, false);
   },
   credentials: true,
 };
 
-server.use(cors(corsOptions));
-server.options('/*', cors(corsOptions));
+server.use(cors(corsOptions)); // ✅ THIS IS ENOUGH (no options route)
 
 server.use(morgan('dev'));
 server.use(express.json());
