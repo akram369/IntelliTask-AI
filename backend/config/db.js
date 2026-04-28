@@ -9,14 +9,17 @@ const { Sequelize } = require('sequelize');
 
 console.log('DB_URL present:', !!process.env.DB_URL);
 
-// ✅ Ensure proper SSL params (removes warning)
+// ✅ Ensure proper SSL params
 const rawUrl = process.env.DB_URL || '';
 const DB_URL = rawUrl.includes('sslmode=')
   ? rawUrl
   : `${rawUrl}${rawUrl.includes('?') ? '&' : '?'}uselibpqcompat=true&sslmode=require`;
 
-// ✅ Track DB state safely
+// 🔥 internal state (NOT exported directly)
 let isDBConnected = false;
+
+// ✅ expose getter (LIVE state)
+const getDBStatus = () => isDBConnected;
 
 const sequelize = new Sequelize(DB_URL, {
   dialect: 'postgres',
@@ -45,7 +48,7 @@ const sequelize = new Sequelize(DB_URL, {
   },
 });
 
-// ✅ Resilient DB connector (no crashes, auto-retry)
+// ✅ resilient connection
 const connectDB = async () => {
   try {
     console.log('🔌 Connecting to database...');
@@ -59,9 +62,8 @@ const connectDB = async () => {
 
     console.error('❌ DB ERROR:', err.message);
 
-    // 🔁 retry after delay (keeps service alive)
-    setTimeout(connectDB, 5000);
+    setTimeout(connectDB, 5000); // retry
   }
 };
 
-module.exports = { sequelize, connectDB, isDBConnected };
+module.exports = { sequelize, connectDB, getDBStatus };

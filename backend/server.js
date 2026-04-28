@@ -6,7 +6,7 @@ require('dotenv').config();
 
 console.log("DB_URL exists:", !!process.env.DB_URL);
 
-const { connectDB, sequelize, isDBConnected } = require('./config/db');
+const { connectDB, sequelize, getDBStatus } = require('./config/db');
 require('./models');
 
 const server = express();
@@ -48,8 +48,10 @@ server.get('/', (req, res) => {
 server.get('/health', (req, res) => {
   res.json({
     status: 'ok',
-    db: isDBConnected ? 'connected' : 'retrying',
+    db: getDBStatus() ? 'connected' : 'retrying',
     uptime: process.uptime(),
+    timestamp: Date.now(),
+    environment: process.env.NODE_ENV,
   });
 });
 
@@ -81,24 +83,26 @@ server.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 
-server.listen(PORT, async () => {
+server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
 
-  // 🔥 Connect DB (retry handled inside db.js)
+  // 🔥 connect DB (retry handled internally)
   connectDB();
 
-  // 🔥 Sync ONLY ONCE after slight delay
-  setTimeout(async () => {
-    try {
-      if (isDBConnected) {
+  // 🔥 sync AFTER DB is ready (single attempt loop)
+  const trySync = async () => {
+    if (getDBStatus()) {
+      try {
         await sequelize.sync();
         console.log('✅ Database synchronized');
-      } else {
-        console.log('⚠️ Skipping sync (DB not connected yet)');
+      } catch (err) {
+        console.error('❌ Sync error:', err.message);
       }
-    } catch (err) {
-      console.error('❌ Sync error:', err.message);
+    } else {
+      setTimeout(trySync, 3000);
     }
-  }, 5000);
+  };
+
+  trySync();
 });
