@@ -3,7 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 require('dotenv').config();
-
+console.log("DB_URL exists:", !!process.env.DB_URL);
 const { connectDB, sequelize } = require('./config/db');
 require('./models');
 
