@@ -6,7 +6,7 @@ require('dotenv').config();
 
 console.log("DB_URL exists:", !!process.env.DB_URL);
 
-const { connectDB, sequelize } = require('./config/db');
+const { connectDB, sequelize, isDBConnected } = require('./config/db');
 require('./models');
 
 const server = express();
@@ -48,6 +48,7 @@ server.get('/', (req, res) => {
 server.get('/health', (req, res) => {
   res.status(200).json({
     status: 'ok',
+    db: isDBConnected ? 'connected' : 'connecting',
     uptime: process.uptime(),
     timestamp: Date.now(),
     environment: process.env.NODE_ENV,
@@ -86,16 +87,14 @@ server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
 
-  // 🔥 CONNECT DB AFTER SERVER STARTS
-  (async () => {
-    try {
-      console.log('🔌 Connecting to database...');
-      await connectDB();
-      await sequelize.sync();
+  // ✅ CONNECT DB (ONLY ONCE)
+  connectDB()
+    .then(() => sequelize.sync())
+    .then(() => {
       console.log('✅ Database connected & models synchronized');
-    } catch (err) {
-      console.error('❌ DB connection failed:', err);
-      // ❗ DO NOT exit → keep server alive for Render
-    }
-  })();
+    })
+    .catch((err) => {
+      console.error('❌ DB connection failed:', err.message);
+      // keep server alive (Render requirement)
+    });
 });
