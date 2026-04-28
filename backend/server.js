@@ -3,7 +3,9 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 require('dotenv').config();
+
 console.log("DB_URL exists:", !!process.env.DB_URL);
+
 const { connectDB, sequelize } = require('./config/db');
 require('./models');
 
@@ -13,40 +15,28 @@ const server = express();
    🔐 SECURITY & MIDDLEWARE
 ========================= */
 
-// ✅ Helmet WITHOUT CSP (API servers don’t need CSP)
+// API server → keep Helmet, no CSP needed
 server.use(helmet());
 
-// ✅ RELIABLE CORS CONFIG
+// Robust CORS for Vercel + local
 const corsOptions = {
   origin: (origin, callback) => {
-    // allow Postman / curl / mobile apps
-    if (!origin) return callback(null, true);
+    if (!origin) return callback(null, true); // Postman/curl
 
-    // allow local dev
-    if (origin === 'http://localhost:5173') {
-      return callback(null, true);
-    }
-
-    // 🔥 allow ALL Vercel deployments (prod + preview)
-    if (origin.includes('.vercel.app')) {
+    if (
+      origin === 'http://localhost:5173' ||
+      origin.includes('.vercel.app')
+    ) {
       return callback(null, true);
     }
 
     console.log('❌ Blocked CORS:', origin);
-
     return callback(null, false);
   },
   credentials: true,
 };
 
 server.use(cors(corsOptions));
-
-// ✅ Explicitly allow preflight (safe with Express 5)
-server.use((req, res, next) => {
-  res.header('Access-Control-Allow-Credentials', 'true');
-  next();
-});
-
 server.use(morgan('dev'));
 server.use(express.json());
 
@@ -90,27 +80,29 @@ server.use((err, req, res, next) => {
 });
 
 /* =========================
-   🚀 SERVER START
+   🚀 STARTUP (DB FIRST)
 ========================= */
 
 const PORT = process.env.PORT || 5000;
 
-server.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
-});
-
-/* =========================
-   🗄️ DATABASE INIT
-========================= */
-
-(async () => {
+const startServer = async () => {
   try {
-    await connectDB();
-    await sequelize.sync();
+    console.log('🔌 Connecting to database...');
+
+    await connectDB();            // ⬅️ MUST succeed
+    await sequelize.sync();       // ⬅️ sync models
+
     console.log('✅ Database connected & models synchronized');
+
+    server.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+      console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
+    });
+
   } catch (err) {
-    console.error('❌ Database connection failed:', err);
-    process.exit(1);
+    console.error('❌ Failed to start server:', err);
+    process.exit(1); // fail fast (no half-alive server)
   }
-})();
+};
+
+startServer();
