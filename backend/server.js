@@ -15,13 +15,11 @@ const server = express();
    🔐 SECURITY & MIDDLEWARE
 ========================= */
 
-// API server → keep Helmet, no CSP needed
 server.use(helmet());
 
-// Robust CORS for Vercel + local
-const corsOptions = {
+server.use(cors({
   origin: (origin, callback) => {
-    if (!origin) return callback(null, true); // Postman/curl
+    if (!origin) return callback(null, true);
 
     if (
       origin === 'http://localhost:5173' ||
@@ -34,11 +32,10 @@ const corsOptions = {
     return callback(null, false);
   },
   credentials: true,
-};
+}));
 
-server.use(cors(corsOptions));
-server.use(morgan('dev'));
 server.use(express.json());
+server.use(morgan('dev'));
 
 /* =========================
    ❤️ HEALTH CHECK ROUTES
@@ -80,29 +77,25 @@ server.use((err, req, res, next) => {
 });
 
 /* =========================
-   🚀 STARTUP (DB FIRST)
+   🚀 START SERVER FIRST
 ========================= */
 
 const PORT = process.env.PORT || 5000;
 
-const startServer = async () => {
-  try {
-    console.log('🔌 Connecting to database...');
+server.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
 
-    await connectDB();            // ⬅️ MUST succeed
-    await sequelize.sync();       // ⬅️ sync models
-
-    console.log('✅ Database connected & models synchronized');
-
-    server.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
-    });
-
-  } catch (err) {
-    console.error('❌ Failed to start server:', err);
-    process.exit(1); // fail fast (no half-alive server)
-  }
-};
-
-startServer();
+  // 🔥 CONNECT DB AFTER SERVER STARTS
+  (async () => {
+    try {
+      console.log('🔌 Connecting to database...');
+      await connectDB();
+      await sequelize.sync();
+      console.log('✅ Database connected & models synchronized');
+    } catch (err) {
+      console.error('❌ DB connection failed:', err);
+      // ❗ DO NOT exit → keep server alive for Render
+    }
+  })();
+});
