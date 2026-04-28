@@ -1,15 +1,16 @@
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0"; // 🔥 allow self-signed certs (Supabase pooler)
-
 const { Sequelize } = require('sequelize');
 require('dotenv').config();
 
 console.log('DB_URL present:', !!process.env.DB_URL);
 
-// Ensure sslmode=require is always present
+// ✅ Always enforce proper SSL mode (clean warning)
 const rawUrl = process.env.DB_URL || '';
-const DB_URL = rawUrl.includes('sslmode=require')
+const DB_URL = rawUrl.includes('sslmode=')
   ? rawUrl
-  : `${rawUrl}${rawUrl.includes('?') ? '&' : '?'}sslmode=require`;
+  : `${rawUrl}${rawUrl.includes('?') ? '&' : '?'}uselibpqcompat=true&sslmode=require`;
+
+// ✅ Track DB state
+let isDBConnected = false;
 
 const sequelize = new Sequelize(DB_URL, {
   dialect: 'postgres',
@@ -19,9 +20,9 @@ const sequelize = new Sequelize(DB_URL, {
   dialectOptions: {
     ssl: {
       require: true,
-      rejectUnauthorized: false, // 🔥 fix self-signed cert issue
+      rejectUnauthorized: false, // 🔥 safe override ONLY for this connection
     },
-    connectTimeout: 30000, // 🔥 prevent ETIMEDOUT
+    connectTimeout: 30000,
     keepAlive: true,
   },
 
@@ -34,29 +35,27 @@ const sequelize = new Sequelize(DB_URL, {
   },
 
   retry: {
-    max: 3, // retry transient failures
+    max: 3,
   },
 });
 
+// 🔁 Resilient DB connection (no crash)
 const connectDB = async () => {
   try {
     console.log('🔌 Connecting to database...');
     await sequelize.authenticate();
+
+    isDBConnected = true;
+
     console.log('✅ PostgreSQL Database Connected...');
   } catch (error) {
-    console.error('❌ DB FULL ERROR:', error);
+    isDBConnected = false;
 
-    if (error?.original) console.error('🔎 DB ORIGINAL:', error.original);
-    if (error?.parent) console.error('🔎 DB PARENT:', error.parent);
+    console.error('❌ DB ERROR:', error.message);
 
-    console.error('🧭 Hints:');
-    console.error('- Use pooler host (aws-...pooler.supabase.com) + port 6543');
-    console.error('- Password must be URL-encoded (Wasim%40369)');
-    console.error('- DB_URL must include ?sslmode=require');
-    console.error('- Ensure no spaces or quotes in DB_URL');
-
-    process.exit(1);
+    // 🔁 Retry instead of killing server
+    setTimeout(connectDB, 5000);
   }
 };
 
-module.exports = { sequelize, connectDB };
+module.exports = { sequelize, connectDB, isDBConnected };
