@@ -1,15 +1,19 @@
 const { Sequelize } = require('sequelize');
 require('dotenv').config();
 
+// ✅ Scoped TLS fix (only for this process)
+if (process.env.NODE_ENV === 'production') {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+}
+
 console.log('DB_URL present:', !!process.env.DB_URL);
 
-// ✅ Always enforce proper SSL mode (clean warning)
+// ✅ Clean SSL params (no warnings)
 const rawUrl = process.env.DB_URL || '';
 const DB_URL = rawUrl.includes('sslmode=')
   ? rawUrl
   : `${rawUrl}${rawUrl.includes('?') ? '&' : '?'}uselibpqcompat=true&sslmode=require`;
 
-// ✅ Track DB state
 let isDBConnected = false;
 
 const sequelize = new Sequelize(DB_URL, {
@@ -20,7 +24,7 @@ const sequelize = new Sequelize(DB_URL, {
   dialectOptions: {
     ssl: {
       require: true,
-      rejectUnauthorized: false, // 🔥 safe override ONLY for this connection
+      rejectUnauthorized: false,
     },
     connectTimeout: 30000,
     keepAlive: true,
@@ -33,13 +37,8 @@ const sequelize = new Sequelize(DB_URL, {
     idle: 10000,
     evict: 10000,
   },
-
-  retry: {
-    max: 3,
-  },
 });
 
-// 🔁 Resilient DB connection (no crash)
 const connectDB = async () => {
   try {
     console.log('🔌 Connecting to database...');
@@ -53,7 +52,7 @@ const connectDB = async () => {
 
     console.error('❌ DB ERROR:', error.message);
 
-    // 🔁 Retry instead of killing server
+    // 🔁 Retry (important)
     setTimeout(connectDB, 5000);
   }
 };
