@@ -13,34 +13,26 @@ const server = express();
    🔐 SECURITY & MIDDLEWARE
 ========================= */
 
-// ✅ FIXED HELMET (CSP configured properly)
-server.use(
-  helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        connectSrc: [
-          "'self'",
-          "https://intellitask-ai.onrender.com",   // backend
-          "https://intellitask-ai1.vercel.app",    // frontend
-          "https://*.vercel.app"                   // preview deployments
-        ],
-      },
-    },
-  })
-);
+// ✅ Helmet WITHOUT CSP (API servers don’t need CSP)
+server.use(helmet());
 
-// ✅ CORS CONFIG
+// ✅ RELIABLE CORS CONFIG
 const corsOptions = {
   origin: (origin, callback) => {
+    // allow Postman / curl / mobile apps
     if (!origin) return callback(null, true);
 
-    if (
-      origin === 'http://localhost:5173' ||
-      origin.endsWith('.vercel.app')
-    ) {
+    // allow local dev
+    if (origin === 'http://localhost:5173') {
       return callback(null, true);
     }
+
+    // 🔥 allow ALL Vercel deployments (prod + preview)
+    if (origin.includes('.vercel.app')) {
+      return callback(null, true);
+    }
+
+    console.log('❌ Blocked CORS:', origin);
 
     return callback(null, false);
   },
@@ -48,6 +40,12 @@ const corsOptions = {
 };
 
 server.use(cors(corsOptions));
+
+// ✅ Explicitly allow preflight (safe with Express 5)
+server.use((req, res, next) => {
+  res.header('Access-Control-Allow-Credentials', 'true');
+  next();
+});
 
 server.use(morgan('dev'));
 server.use(express.json());
