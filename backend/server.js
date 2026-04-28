@@ -12,7 +12,7 @@ require('./models');
 const server = express();
 
 /* =========================
-   🔐 SECURITY & MIDDLEWARE
+   🔐 MIDDLEWARE
 ========================= */
 
 server.use(helmet());
@@ -38,7 +38,7 @@ server.use(express.json());
 server.use(morgan('dev'));
 
 /* =========================
-   ❤️ HEALTH CHECK ROUTES
+   ❤️ HEALTH
 ========================= */
 
 server.get('/', (req, res) => {
@@ -46,17 +46,15 @@ server.get('/', (req, res) => {
 });
 
 server.get('/health', (req, res) => {
-  res.status(200).json({
+  res.json({
     status: 'ok',
     db: isDBConnected ? 'connected' : 'retrying',
     uptime: process.uptime(),
-    timestamp: Date.now(),
-    environment: process.env.NODE_ENV,
   });
 });
 
 /* =========================
-   🔗 API ROUTES
+   🔗 ROUTES
 ========================= */
 
 server.use('/api/auth', require('./routes/authRoutes'));
@@ -78,34 +76,29 @@ server.use((err, req, res, next) => {
 });
 
 /* =========================
-   🚀 START SERVER FIRST
+   🚀 START SERVER
 ========================= */
 
 const PORT = process.env.PORT || 5000;
 
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
 
-  // 🔥 DB connection (non-blocking, self-healing)
+  // 🔥 Connect DB (retry handled inside db.js)
   connectDB();
 
-  // 🔥 Sync DB AFTER connection (safe retry pattern)
-  const syncDB = async () => {
+  // 🔥 Sync ONLY ONCE after slight delay
+  setTimeout(async () => {
     try {
       if (isDBConnected) {
         await sequelize.sync();
         console.log('✅ Database synchronized');
       } else {
-        console.log('⏳ Waiting for DB before sync...');
+        console.log('⚠️ Skipping sync (DB not connected yet)');
       }
     } catch (err) {
       console.error('❌ Sync error:', err.message);
     }
-
-    // retry sync every 5s until success
-    setTimeout(syncDB, 5000);
-  };
-
-  syncDB();
+  }, 5000);
 });
