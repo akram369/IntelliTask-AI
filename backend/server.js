@@ -48,7 +48,7 @@ server.get('/', (req, res) => {
 server.get('/health', (req, res) => {
   res.status(200).json({
     status: 'ok',
-    db: isDBConnected ? 'connected' : 'connecting',
+    db: isDBConnected ? 'connected' : 'retrying',
     uptime: process.uptime(),
     timestamp: Date.now(),
     environment: process.env.NODE_ENV,
@@ -87,14 +87,25 @@ server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
 
-  // ✅ CONNECT DB (ONLY ONCE)
-  connectDB()
-    .then(() => sequelize.sync())
-    .then(() => {
-      console.log('✅ Database connected & models synchronized');
-    })
-    .catch((err) => {
-      console.error('❌ DB connection failed:', err.message);
-      // keep server alive (Render requirement)
-    });
+  // 🔥 DB connection (non-blocking, self-healing)
+  connectDB();
+
+  // 🔥 Sync DB AFTER connection (safe retry pattern)
+  const syncDB = async () => {
+    try {
+      if (isDBConnected) {
+        await sequelize.sync();
+        console.log('✅ Database synchronized');
+      } else {
+        console.log('⏳ Waiting for DB before sync...');
+      }
+    } catch (err) {
+      console.error('❌ Sync error:', err.message);
+    }
+
+    // retry sync every 5s until success
+    setTimeout(syncDB, 5000);
+  };
+
+  syncDB();
 });
