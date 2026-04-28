@@ -1,9 +1,7 @@
 require('dotenv').config();
 
-// 🔥 Fix self-signed cert issue (ONLY in production)
-if (process.env.NODE_ENV === 'production') {
-  process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
-}
+// 🔥 Fix self-signed cert issue (Crucial for Supabase/Render)
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
 const { Sequelize } = require('sequelize');
 
@@ -26,11 +24,12 @@ const sequelize = new Sequelize(DB_URL, {
   protocol: 'postgres',
   logging: false,
 
-  dialectOptions: {
+    dialectOptions: {
     ssl: {
       require: true,
       rejectUnauthorized: false,
     },
+    prepareThreshold: 0,
     connectTimeout: 30000,
     keepAlive: true,
   },
@@ -61,7 +60,6 @@ const connectDB = async () => {
     isDBConnected = false;
 
     console.error('❌ DB ERROR:', err.message);
-
     setTimeout(connectDB, 5000); // retry
   }
 };

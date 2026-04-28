@@ -34,12 +34,19 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Network / CORS error
+    // Network / CORS / Timeout error
     if (!error.response) {
-      console.error('Network/CORS Error:', error.message);
+      console.error('Network/CORS/Timeout Error:', {
+        message: error.message,
+        code: error.code,
+        config: error.config?.url
+      });
 
-      // ❗ Replace alert with console (or toast later)
-      console.warn("Backend unreachable");
+      if (error.code === 'ECONNABORTED') {
+        console.warn("Request timed out");
+      } else {
+        console.warn("Backend unreachable or CORS issue");
+      }
     }
 
     // Unauthorized → logout
